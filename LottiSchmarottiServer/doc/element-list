@@ -1,0 +1,10 @@
+de.emnichtda.lottischmarotti.server
+de.emnichtda.lottischmarotti.server.entitys
+de.emnichtda.lottischmarotti.server.entitys.connection
+de.emnichtda.lottischmarotti.server.entitys.connection.enums
+de.emnichtda.lottischmarotti.server.entitys.connection.parser
+de.emnichtda.lottischmarotti.server.entitys.events
+de.emnichtda.lottischmarotti.server.entitys.events.connection
+de.emnichtda.lottischmarotti.server.entitys.exceptions.connection.parser
+de.emnichtda.lottischmarotti.server.entitys.game
+de.emnichtda.lottischmarotti.server.entitys.logger
