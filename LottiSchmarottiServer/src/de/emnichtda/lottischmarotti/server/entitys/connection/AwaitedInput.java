@@ -39,11 +39,18 @@ public class AwaitedInput {
 	}
 	
 	/***
-	 * set the system time in ms when the connection will be disconnected if no answer was received at this point
+	 * set the system time in ms when the connection will be disconnected if no answer was received at this time
 	 * @param time
 	 */
 	protected void setTimeWhenDisconnect(long time) {
 		timeWhenDisconnect = time;
+	}
+	
+	/***
+	 * resets the time when the connection will be closed if no answer was received at this time to the usual amount of time
+	 */
+	public void resetTimeWhenDisconnect() {
+		setTimeWhenDisconnect(System.currentTimeMillis()+MAXIMUM_AWAIT_TIME_IN_MS);
 	}
 
 	/***
@@ -97,7 +104,7 @@ public class AwaitedInput {
 	 */
 	protected void setStatus(AwaitedInputStatus status) {
 		if(this.status.equals(AwaitedInputStatus.CONNECTION_UNSET) && status.equals(AwaitedInputStatus.WAITING)) {
-			setTimeWhenDisconnect(System.currentTimeMillis()+MAXIMUM_AWAIT_TIME_IN_MS);
+			resetTimeWhenDisconnect();
 		}
 		this.status = status;
 	}

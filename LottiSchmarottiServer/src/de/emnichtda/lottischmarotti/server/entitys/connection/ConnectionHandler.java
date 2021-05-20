@@ -16,6 +16,7 @@ import de.emnichtda.lottischmarotti.server.entitys.connection.enums.RequestMetho
 import de.emnichtda.lottischmarotti.server.entitys.connection.parser.Input;
 import de.emnichtda.lottischmarotti.server.entitys.connection.parser.Output;
 import de.emnichtda.lottischmarotti.server.entitys.connection.parser.OutputBuilder;
+import de.emnichtda.lottischmarotti.server.entitys.events.connection.NewAwaitedInputListener;
 import de.emnichtda.lottischmarotti.server.entitys.exceptions.connection.parser.MaliformedInputExcpetion;
 import de.emnichtda.lottischmarotti.server.entitys.exceptions.connection.parser.UnknownInputException;
 import de.emnichtda.lottischmarotti.server.entitys.exceptions.connection.parser.UnknownRequestException;
@@ -24,32 +25,34 @@ import de.emnichtda.lottischmarotti.server.entitys.logger.LogType;
 import de.emnichtda.lottischmarotti.server.entitys.logger.Logable;
 import de.emnichtda.lottischmarotti.server.entitys.logger.Logger;
 
-public class ConnectionHandler implements Logable{
+public class ConnectionHandler implements Logable {
 
 	private static int nextConnectionId = 0;
-	
+
 	private int connectionId;
-	
+
 	private Socket connection;
 	private DataInputStream input;
 	private DataOutputStream output;
 	private SocketHandler socket;
-	
+
 	private Client client;
-	
+
 	private ArrayList<AcceptedInput> acceptedInputs = new ArrayList<>();
-	
+
 	private boolean run = true;
 
 	private ArrayList<AwaitedInput> awaitedInputQueue = new ArrayList<>();
 
+	private ArrayList<NewAwaitedInputListener> newAwiatedInputListeners = new ArrayList<>();
+
 	protected ConnectionHandler(Socket connection, SocketHandler socket) throws IOException {
 		this.connection = connection;
 		this.socket = socket;
-		
+
 		connectionId = nextConnectionId;
 		nextConnectionId++;
-		
+
 		input = new DataInputStream(connection.getInputStream());
 		output = new DataOutputStream(connection.getOutputStream());
 		init();
@@ -61,9 +64,9 @@ public class ConnectionHandler implements Logable{
 	 */
 	private void init() {
 		Logger.getInstance().logInfo("Connected", this);
-		
+
 		initTimer();
-		
+
 		Thread t = new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -72,7 +75,8 @@ public class ConnectionHandler implements Logable{
 						handleResponse(input.readUTF());
 					} catch (IOException e) {
 						if (connection.isBound() && !connection.isClosed()) {
-							LogType logType = (client != null && client instanceof Player) ? LogType.ERROR : LogType.WARNING;
+							LogType logType = (client != null && client instanceof Player) ? LogType.ERROR
+									: LogType.WARNING;
 							endConnection(
 									"Unable to read message from client. " + e.getMessage()
 											+ ", disconnecting the client.",
@@ -86,9 +90,9 @@ public class ConnectionHandler implements Logable{
 			}
 		});
 		t.start();
-		
+
 		initClient();
-		
+
 	}
 
 	/***
@@ -96,40 +100,56 @@ public class ConnectionHandler implements Logable{
 	 */
 	private void initClient() {
 		awaitInput(new AwaitedInput(InputType.INITIAL_INFORMATION, (response, status) -> {
-			if(!status.equals(AwaitedInputStatus.ARRIVED)) {
-				if(isRun()) {
-					endConnection("Requested initial informations, client responded with: " + status, LogType.WARNING, OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR, "Awaited initial information, got: " + status));
+			if (!status.equals(AwaitedInputStatus.ARRIVED)) {
+				if (isRun()) {
+					endConnection("Requested initial informations, client responded with: " + status, LogType.WARNING,
+							OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR,
+									"Awaited initial information, got: " + status));
 				}
 				return;
 			}
-			if(!response.getRequestMethod().equals(RequestMethod.POST)) {
-				if(isRun()) {
-					endConnection("Requested initial informations, client responded with method: " + response.getRequestMethod() + " instead of " + RequestMethod.POST, LogType.WARNING, OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR, "Awaited initial information, got request " + response.getRequestMethod() + " instead of " + RequestMethod.POST));
+			if (!response.getRequestMethod().equals(RequestMethod.POST)) {
+				if (isRun()) {
+					endConnection(
+							"Requested initial informations, client responded with method: "
+									+ response.getRequestMethod() + " instead of " + RequestMethod.POST,
+							LogType.WARNING,
+							OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR,
+									"Awaited initial information, got request " + response.getRequestMethod()
+											+ " instead of " + RequestMethod.POST));
 				}
 				return;
 			}
-			if(response.getParsedArguments().length < 2) {
-				if(isRun()) {
-					endConnection("Requested initial informations, client responded with too short answer. Expected at least 2, got " + response.getParsedArguments().length, LogType.WARNING, OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR, "Awaited initial information, got too short answer, expected 2, got " + response.getParsedArguments().length));
+			if (response.getParsedArguments().length < 2) {
+				if (isRun()) {
+					endConnection(
+							"Requested initial informations, client responded with too short answer. Expected at least 2, got "
+									+ response.getParsedArguments().length,
+							LogType.WARNING,
+							OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR,
+									"Awaited initial information, got too short answer, expected 2, got "
+											+ response.getParsedArguments().length));
 				}
 				return;
 			}
-			if(response.getParsedArguments()[0].equalsIgnoreCase("PLAYER")) {
-				if(Main.getInstance().isStarted()) {
-					endConnection("Player tried to connect but game is already running.", LogType.INFO, OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR, "The game is already running."));
+			if (response.getParsedArguments()[0].equalsIgnoreCase("PLAYER")) {
+				if (Main.getInstance().isStarted()) {
+					endConnection("Player tried to connect but game is already running.", LogType.INFO, OutputBuilder
+							.getInstance().build(OutputType.GENERAL_ERROR, "The game is already running."));
 					return;
 				}
-				if(socket.getConnectedPlayers().size()>=Main.MAX_PLAYERS) {
-					endConnection("Player tried to connect but game is already full.", LogType.INFO, OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR, "The game is full."));
+				if (socket.getConnectedPlayers().size() >= Main.MAX_PLAYERS) {
+					endConnection("Player tried to connect but game is already full.", LogType.INFO,
+							OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR, "The game is full."));
 					return;
 				}
 				client = new Player(this, response.getParsedArguments()[1]);
-			}else {
+			} else {
 				client = new Client(this, response.getParsedArguments()[1]);
 			}
 			client.init();
 			Logger.getInstance().logInfo("Got initial information from client, created instance.", client);
-		}));	
+		}));
 	}
 
 	/***
@@ -143,9 +163,10 @@ public class ConnectionHandler implements Logable{
 
 	/***
 	 * handle the response got from the client
+	 * 
 	 * @param response message
 	 */
-	private void handleResponse(String response) { // TODO actually implement it, not just a test version
+	private void handleResponse(String response) {
 		Input input = null;
 		try {
 			input = new Input(response);
@@ -154,18 +175,18 @@ public class ConnectionHandler implements Logable{
 		}
 		if (awaitedInputQueue.isEmpty()) {
 			boolean inputWasListened = false;
-			if(input==null) {
+			if (input == null) {
 				return;
 			}
-			for(AcceptedInput acceptedInput : acceptedInputs) {
-				if(acceptedInput.getAcceptedInputTypes().contains(input.getInputType())) {
-					if(input!=null) {
+			for (AcceptedInput acceptedInput : acceptedInputs) {
+				if (acceptedInput.getAcceptedInputTypes().contains(input.getInputType())) {
+					if (input != null) {
 						acceptedInput.arrived(input, AwaitedInputStatus.ARRIVED);
 					}
 					inputWasListened = true;
 				}
 			}
-			if(inputWasListened) {
+			if (inputWasListened) {
 				return;
 			}
 			try {
@@ -190,10 +211,21 @@ public class ConnectionHandler implements Logable{
 			handleResponse(response);
 			return;
 		}
-		awaitedInputQueue.remove(0);
-		if(input!=null) {
-			currentAwaitedInput.arrived(input, AwaitedInputStatus.ARRIVED);
-		}else {
+		
+		if (input != null) {
+			if(input.getInputType().equals(InputType.CLIENT_TIMEOUT)) {
+				currentAwaitedInput.resetTimeWhenDisconnect();
+				try {
+					sendMessage(OutputBuilder.getInstance().build(OutputType.ACKNOWLEDGMENT, "Reset await time"));
+				} catch (IOException e) {
+					Logger.getInstance().logWarning("Unable to inform client about acknowledgment awaited input timout reset", this);
+				}
+			}else {
+				awaitedInputQueue.remove(0);
+				currentAwaitedInput.arrived(input, AwaitedInputStatus.ARRIVED);
+			}
+		} else {
+			awaitedInputQueue.remove(0);
 			currentAwaitedInput.arrived(null, AwaitedInputStatus.MALIFORMED);
 		}
 		recheckAwaitQueue();
@@ -258,8 +290,8 @@ public class ConnectionHandler implements Logable{
 				return;
 			}
 			if (!currentAwaitedInput.getStatus().equals(AwaitedInputStatus.WAITING)) {
-				Logger.getInstance()
-						.logWarning("A awaited input was not waiting anymore but still in the queue. Skipping it.", this);
+				Logger.getInstance().logWarning(
+						"A awaited input was not waiting anymore but still in the queue. Skipping it.", this);
 				currentAwaitedInput.arrived(null, AwaitedInputStatus.CONNECTION_ERROR);
 				awaitedInputQueue.remove(0);
 				return;
@@ -277,12 +309,13 @@ public class ConnectionHandler implements Logable{
 
 	/***
 	 * End the connection
+	 * 
 	 * @param logMessage message in the log
-	 * @param logType type of log message
+	 * @param logType    type of log message
 	 * @param lastOutput message sent to the client (reason for disconnect)
 	 */
 	public void endConnection(String logMessage, LogType logType, Output lastOutput) {
-		if(!run) {
+		if (!run) {
 			return;
 		}
 		run = false;
@@ -301,7 +334,7 @@ public class ConnectionHandler implements Logable{
 	}
 
 	protected void cancelAllAwaitingInputs(AwaitedInputStatus error) {
-		while(!awaitedInputQueue.isEmpty()) {
+		while (!awaitedInputQueue.isEmpty()) {
 			AwaitedInput input = awaitedInputQueue.get(0);
 			awaitedInputQueue.remove(0);
 			input.arrived(null, error);
@@ -327,7 +360,7 @@ public class ConnectionHandler implements Logable{
 	 * @param Output message
 	 * @throws IOException on error
 	 */
-	protected void sendMessage(Output message) throws IOException {
+	public void sendMessage(Output message) throws IOException {
 		output.writeUTF(message.getMessage());
 	}
 
@@ -354,7 +387,21 @@ public class ConnectionHandler implements Logable{
 	public void awaitInput(AwaitedInput input) {
 		input.setConnection(this);
 		awaitedInputQueue.add(input);
+
+		newAwiatedInputListeners.forEach((listener) -> {
+			new Thread(new Runnable() {
+				@Override
+				public void run() {
+					listener.onNewAwiatedInput(input);
+				}
+			}).start();
+		});
+
 		recheckAwaitQueue();
+	}
+
+	public void registerNewAwaitedInputListener(NewAwaitedInputListener listener) {
+
 	}
 
 	/***
@@ -369,14 +416,16 @@ public class ConnectionHandler implements Logable{
 
 	/***
 	 * get the socket the connection is connected to
+	 * 
 	 * @return SocketHandler socket
 	 */
 	public SocketHandler getSocket() {
 		return socket;
 	}
-	
+
 	/***
 	 * get if socket is accepting input from client
+	 * 
 	 * @return run
 	 */
 	public boolean isRun() {
@@ -385,6 +434,7 @@ public class ConnectionHandler implements Logable{
 
 	/***
 	 * get the connection id
+	 * 
 	 * @return id
 	 */
 	public int getConnectionId() {
@@ -397,22 +447,25 @@ public class ConnectionHandler implements Logable{
 	}
 
 	/***
-	 * Get the corresponding client (player/bot) (can be null if information not there yet)
+	 * Get the corresponding client (player/bot) (can be null if information not
+	 * there yet)
+	 * 
 	 * @return client client
 	 */
 	public Client getClient() {
 		return client;
 	}
-	
+
 	/***
 	 * add a accepted input
+	 * 
 	 * @param input input
 	 */
 	public void addAcceptedInput(AcceptedInput input) {
 		input.setConnection(this);
 		acceptedInputs.add(input);
 	}
-	
+
 	public void removeAcceptedInput(AcceptedInput input) {
 		input.setConnection(null);
 		acceptedInputs.remove(input);
@@ -420,11 +473,22 @@ public class ConnectionHandler implements Logable{
 
 	/***
 	 * Get a copy of the list of the accepted inputs
+	 * 
 	 * @return acceptedInputs inputs
 	 */
-	@SuppressWarnings("unchecked") //Its secure
+	@SuppressWarnings("unchecked") // Its secure
 	public ArrayList<AcceptedInput> getAcceptedInputs() {
 		return (ArrayList<AcceptedInput>) acceptedInputs.clone();
+	}
+
+	/***
+	 * Get a copy of the list of new awaited input listeners
+	 * 
+	 * @return
+	 */
+	@SuppressWarnings("unchecked") // Its secure
+	public ArrayList<NewAwaitedInputListener> getNewAwiatedInputListeners() {
+		return (ArrayList<NewAwaitedInputListener>) newAwiatedInputListeners.clone();
 	}
 
 }

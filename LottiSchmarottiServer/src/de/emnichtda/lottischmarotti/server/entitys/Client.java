@@ -27,7 +27,7 @@ public class Client implements Logable{
 			}
 			connection.endConnection("Disconnect", LogType.INFO, OutputBuilder.getInstance().build(OutputType.ACKNOWLEDGMENT, "Have a great day"));
 			Logger.getInstance().logInfo("Disconnected with reason: " + reason, this);
-		}));	
+		}));
 		connection.getSocket().fireClientPairedEvent(this);
 	}
 

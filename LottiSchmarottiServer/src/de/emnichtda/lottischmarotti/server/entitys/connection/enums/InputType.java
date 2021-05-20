@@ -10,7 +10,7 @@ package de.emnichtda.lottischmarotti.server.entitys.connection.enums;
  */
 
 public enum InputType {
-	ACKNOWLEDGMENT(0), INITIAL_INFORMATION(1), CLIENT_SHUTDOWN(21), GENERAL_ERROR(40), CONNECTION_TIMEOUT(41);
+	ACKNOWLEDGMENT(0), INITIAL_INFORMATION(1), CLIENT_SHUTDOWN(21), CLIENT_TIMEOUT(23), GENERAL_ERROR(40), CONNECTION_TIMEOUT(41);
 	
 	private int id;
 	

@@ -3,7 +3,9 @@ package de.emnichtda.lottischmarotti.server;
 import java.io.IOException;
 
 import de.emnichtda.lottischmarotti.server.entitys.InternalTimer;
+import de.emnichtda.lottischmarotti.server.entitys.connection.AwaitedInput;
 import de.emnichtda.lottischmarotti.server.entitys.connection.SocketHandler;
+import de.emnichtda.lottischmarotti.server.entitys.connection.enums.InputType;
 import de.emnichtda.lottischmarotti.server.entitys.game.BoardHandler;
 import de.emnichtda.lottischmarotti.server.entitys.logger.Logger;
 
@@ -20,7 +22,7 @@ public class Main {
 	
 	private static Main instance;
 	
-	public Main() {		
+	public Main() {
 		
 		if(instance==null) instance = this;
 		else {
@@ -61,6 +63,7 @@ public class Main {
 		systemTimeWhenStart = Long.MAX_VALUE;
 		isStarted = true;
 		Logger.getInstance().logInfo("Game is starting.");
+		
 	}
 
 	public void stop() {
