@@ -1,7 +1,12 @@
 package de.emnichtda.lottischmarotti.server.entitys.game;
 
 import de.emnichtda.lottischmarotti.server.entitys.Client;
+import de.emnichtda.lottischmarotti.server.entitys.connection.AwaitedInput;
 import de.emnichtda.lottischmarotti.server.entitys.connection.ConnectionHandler;
+import de.emnichtda.lottischmarotti.server.entitys.connection.enums.AwaitedInputStatus;
+import de.emnichtda.lottischmarotti.server.entitys.connection.enums.InputType;
+import de.emnichtda.lottischmarotti.server.entitys.connection.parser.Input;
+import de.emnichtda.lottischmarotti.server.entitys.events.connection.InputArrivedEvent;
 
 public class Player extends Client{
 
@@ -41,4 +46,51 @@ public class Player extends Client{
 		return "[Player Client: " + getClientName() + "]" + getConnection().getLogPrefix();
 	}
 
+	/***
+	 * Tell the player its their turn
+	 */
+	public void turn() {
+		DiceDecisionListener listener = new DiceDecisionListener();
+		
+		roll(listener);
+	}
+	
+	public void roll(DiceDecisionListener listener) {
+		int rolled = Dice.getInstance().roll();
+		listener.addRolledNumber(rolled);
+		
+		getConnection().awaitInput(new AwaitedInput(InputType.ROLL_DECISION, "" + rolled, listener));
+	}
+	
+	public void rollDone() { //Do figure selection etc
+		getConnection().getSocket().getGame().finishedTurn(this);
+	}
+
+	private class DiceDecisionListener implements InputArrivedEvent {
+		public int[] lastRolled = new int[3];
+		
+		public void addRolledNumber(int rolled) {
+			for(int i = 0; i < lastRolled.length; i++) {
+				if(lastRolled[i] == 0) {
+					lastRolled[i] = rolled;
+					return;
+				}
+			}
+			throw new IndexOutOfBoundsException("There are already 3 dice rolls saved.");
+		}
+		
+		@Override
+		public void onArrive(Input response, AwaitedInputStatus status) { //TODO: Check if roll done etc etc etc
+			if(!isFull()) {
+				roll(this);
+			}else {
+				rollDone();
+			}
+		}
+		
+		public boolean isFull() {
+			return lastRolled[lastRolled.length-1] != 0;
+		}
+	}
+	
 }

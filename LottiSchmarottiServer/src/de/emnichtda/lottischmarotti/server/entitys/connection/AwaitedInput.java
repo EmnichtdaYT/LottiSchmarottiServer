@@ -12,12 +12,21 @@ public class AwaitedInput {
 	private long timeWhenDisconnect = Integer.MAX_VALUE;
 	
 	private InputArrivedEvent onArrive;
+	
 	private InputType type;
+	private String message;
+	
 	private AwaitedInputStatus status = AwaitedInputStatus.CONNECTION_UNSET;
 	
 	private ConnectionHandler connection;
 	
 	public AwaitedInput(InputType type, InputArrivedEvent onArrive) {
+		this.type = type;
+		this.setOnArrive(onArrive);
+	}
+	
+	public AwaitedInput(InputType type, String message, InputArrivedEvent onArrive) {
+		this.message = message;
 		this.type = type;
 		this.setOnArrive(onArrive);
 	}
@@ -107,6 +116,10 @@ public class AwaitedInput {
 			resetTimeWhenDisconnect();
 		}
 		this.status = status;
+	}
+
+	public String getMessage() {
+		return message;
 	}
 	
 }

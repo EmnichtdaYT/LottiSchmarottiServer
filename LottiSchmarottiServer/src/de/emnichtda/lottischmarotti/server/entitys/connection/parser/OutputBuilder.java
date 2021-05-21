@@ -17,11 +17,11 @@ public class OutputBuilder {
 	
 	private OutputBuilder() { }
 	
-	public Output build(InputType type) { 
-		return new Output(RequestMethod.GET + " " + type.getId());
+	public Output buildAwaitedInput(InputType type, String message) { 
+		return new Output(RequestMethod.GET + " " + type.getId() + " " + message);
 	}
 	
-	public Output build(OutputType type, String message) { 
+	public Output buildOutput(OutputType type, String message) { 
 		return new Output(RequestMethod.POST + " " + type.getId() + " " + message);
 	}
 	

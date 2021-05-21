@@ -2,14 +2,14 @@ package de.emnichtda.lottischmarotti.server.entitys.connection.enums;
 
 /***
  * 0 - ack
- * 1 - 29 = requested
+ * 1 - 19 = requested
  * 20 - 39 = not requested
  * 40 - 59 = error
  * @author Erik Zoe Satzinger | EmnichtdaYT
  *
  */
 public enum OutputType {
-	ACKNOWLEDGMENT(0), INITIAL_INFORMATION(1), SERVER_SHUTDOWN(21), CONNECTED_CLIENT_INFO(22), SERVER_TIMEOUT(23), GENERAL_ERROR(40), CONNECTION_TIMEOUT(41);
+	ACKNOWLEDGMENT(0), INITIAL_INFORMATION(1), ROLL_QUESTION(2), SERVER_SHUTDOWN(21), CONNECTED_CLIENT_INFO(22), SERVER_TIMEOUT(23), GENERAL_ERROR(40), CONNECTION_TIMEOUT(41);
 	
 	private int id;
 	

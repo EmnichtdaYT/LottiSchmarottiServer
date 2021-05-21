@@ -20,6 +20,7 @@ import de.emnichtda.lottischmarotti.server.entitys.events.connection.NewAwaitedI
 import de.emnichtda.lottischmarotti.server.entitys.exceptions.connection.parser.MaliformedInputExcpetion;
 import de.emnichtda.lottischmarotti.server.entitys.exceptions.connection.parser.UnknownInputException;
 import de.emnichtda.lottischmarotti.server.entitys.exceptions.connection.parser.UnknownRequestException;
+import de.emnichtda.lottischmarotti.server.entitys.game.Game;
 import de.emnichtda.lottischmarotti.server.entitys.game.Player;
 import de.emnichtda.lottischmarotti.server.entitys.logger.LogType;
 import de.emnichtda.lottischmarotti.server.entitys.logger.Logable;
@@ -81,7 +82,7 @@ public class ConnectionHandler implements Logable {
 									"Unable to read message from client. " + e.getMessage()
 											+ ", disconnecting the client.",
 									logType,
-									OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR,
+									OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR,
 											"Maliformed response or other error while reading message. "
 													+ e.getMessage()));
 						}
@@ -103,7 +104,7 @@ public class ConnectionHandler implements Logable {
 			if (!status.equals(AwaitedInputStatus.ARRIVED)) {
 				if (isRun()) {
 					endConnection("Requested initial informations, client responded with: " + status, LogType.WARNING,
-							OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR,
+							OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR,
 									"Awaited initial information, got: " + status));
 				}
 				return;
@@ -114,7 +115,7 @@ public class ConnectionHandler implements Logable {
 							"Requested initial informations, client responded with method: "
 									+ response.getRequestMethod() + " instead of " + RequestMethod.POST,
 							LogType.WARNING,
-							OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR,
+							OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR,
 									"Awaited initial information, got request " + response.getRequestMethod()
 											+ " instead of " + RequestMethod.POST));
 				}
@@ -126,21 +127,21 @@ public class ConnectionHandler implements Logable {
 							"Requested initial informations, client responded with too short answer. Expected at least 2, got "
 									+ response.getParsedArguments().length,
 							LogType.WARNING,
-							OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR,
+							OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR,
 									"Awaited initial information, got too short answer, expected 2, got "
 											+ response.getParsedArguments().length));
 				}
 				return;
 			}
 			if (response.getParsedArguments()[0].equalsIgnoreCase("PLAYER")) {
-				if (Main.getInstance().isStarted()) {
+				if (Main.getInstance().getGame().isStarted()) {
 					endConnection("Player tried to connect but game is already running.", LogType.INFO, OutputBuilder
-							.getInstance().build(OutputType.GENERAL_ERROR, "The game is already running."));
+							.getInstance().buildOutput(OutputType.GENERAL_ERROR, "The game is already running."));
 					return;
 				}
-				if (socket.getConnectedPlayers().size() >= Main.MAX_PLAYERS) {
+				if (socket.getConnectedPlayers().size() >= Game.MAX_PLAYERS) {
 					endConnection("Player tried to connect but game is already full.", LogType.INFO,
-							OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR, "The game is full."));
+							OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR, "The game is full."));
 					return;
 				}
 				client = new Player(this, response.getParsedArguments()[1]);
@@ -190,13 +191,13 @@ public class ConnectionHandler implements Logable {
 				return;
 			}
 			try {
-				sendMessage(OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR, "Unwanted information"));
+				sendMessage(OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR, "Unwanted information"));
 			} catch (IOException e) {
 				endConnection(
 						"Unable to send information message about unwanted information to the client." + e.getMessage()
 								+ ", disconnecting the client.",
 						LogType.ERROR,
-						OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR,
+						OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR,
 								"Error while trying to send a message, actually if you are able to see this message a miracle happened. Whatever. "
 										+ e.getMessage()));
 			}
@@ -216,7 +217,7 @@ public class ConnectionHandler implements Logable {
 			if(input.getInputType().equals(InputType.CLIENT_TIMEOUT)) {
 				currentAwaitedInput.resetTimeWhenDisconnect();
 				try {
-					sendMessage(OutputBuilder.getInstance().build(OutputType.ACKNOWLEDGMENT, "Reset await time"));
+					sendMessage(OutputBuilder.getInstance().buildOutput(OutputType.ACKNOWLEDGMENT, "Reset await time"));
 				} catch (IOException e) {
 					Logger.getInstance().logWarning("Unable to inform client about acknowledgment awaited input timout reset", this);
 				}
@@ -277,13 +278,14 @@ public class ConnectionHandler implements Logable {
 			AwaitedInput currentAwaitedInput = awaitedInputQueue.get(0);
 			if (currentAwaitedInput.getStatus().equals(AwaitedInputStatus.CONNECTION_UNSET)) {
 				try {
+					currentAwaitedInput.setStatus(AwaitedInputStatus.WAITING);
 					sendFirstAwaitInputQueueMessage();
 				} catch (IOException e) {
 					endConnection(
 							"Unable to send await input message " + currentAwaitedInput.getType()
 									+ " to client because " + e.getMessage() + ", disconnecting the client.",
 							LogType.ERROR,
-							OutputBuilder.getInstance().build(OutputType.GENERAL_ERROR,
+							OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR,
 									"Error while trying to send a message, actually if you are able to see this message a miracle happened. Whatever. "
 											+ e.getMessage()));
 				}
@@ -300,7 +302,7 @@ public class ConnectionHandler implements Logable {
 				endConnection(
 						"Client didn't respond for longer than " + AwaitedInput.MAXIMUM_AWAIT_TIME_IN_MS
 								+ " ms with response for: '" + currentAwaitedInput.getType() + "', disconnected them.",
-						LogType.WARNING, OutputBuilder.getInstance().build(OutputType.CONNECTION_TIMEOUT,
+						LogType.WARNING, OutputBuilder.getInstance().buildOutput(OutputType.CONNECTION_TIMEOUT,
 								"Timed out after " + AwaitedInput.MAXIMUM_AWAIT_TIME_IN_MS + " ms"));
 				return;
 			}
@@ -349,8 +351,7 @@ public class ConnectionHandler implements Logable {
 	protected void sendFirstAwaitInputQueueMessage() throws IOException {
 		if (!awaitedInputQueue.isEmpty()) {
 			AwaitedInput currentAwaitedInput = awaitedInputQueue.get(0);
-			currentAwaitedInput.setStatus(AwaitedInputStatus.WAITING);
-			sendMessage(OutputBuilder.getInstance().build(currentAwaitedInput.getType()));
+			sendMessage(OutputBuilder.getInstance().buildAwaitedInput(currentAwaitedInput.getType(), currentAwaitedInput.getMessage()));
 		}
 	}
 
@@ -375,8 +376,9 @@ public class ConnectionHandler implements Logable {
 		output.close();
 		connection.close();
 		socket.getConnectedPlayers().remove(client);
-		client = null;
 		socket.getConnections().remove(this);
+		socket.fireConnectionDisconnectEvent(this);
+		client = null;
 	}
 
 	/***

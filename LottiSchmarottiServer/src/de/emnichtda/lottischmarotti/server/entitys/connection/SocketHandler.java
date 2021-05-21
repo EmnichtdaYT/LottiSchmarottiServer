@@ -8,6 +8,8 @@ import de.emnichtda.lottischmarotti.server.entitys.Client;
 import de.emnichtda.lottischmarotti.server.entitys.connection.enums.OutputType;
 import de.emnichtda.lottischmarotti.server.entitys.connection.parser.OutputBuilder;
 import de.emnichtda.lottischmarotti.server.entitys.events.connection.ConnectEvent;
+import de.emnichtda.lottischmarotti.server.entitys.events.connection.ConnectionDisconnectEvent;
+import de.emnichtda.lottischmarotti.server.entitys.game.Game;
 import de.emnichtda.lottischmarotti.server.entitys.game.Player;
 import de.emnichtda.lottischmarotti.server.entitys.events.connection.ClientPairedEvent;
 import de.emnichtda.lottischmarotti.server.entitys.logger.LogType;
@@ -16,12 +18,15 @@ import de.emnichtda.lottischmarotti.server.entitys.logger.Logger;
 
 public class SocketHandler implements Logable {
 
+	private Game game;
+	
 	private int port;
 	private ServerSocket socket;
 	private ArrayList<ConnectionHandler> conHandlers;
 
 	private ArrayList<ConnectEvent> connectListeners = new ArrayList<>();
 	private ArrayList<ClientPairedEvent> clientPairedListeners = new ArrayList<>();
+	private ArrayList<ConnectionDisconnectEvent> connectionDisconnectListeners = new ArrayList<>();
 	
 	private ArrayList<Player> connectedPlayers = new ArrayList<>();
 
@@ -33,7 +38,8 @@ public class SocketHandler implements Logable {
 	 * @param port port the server runs on
 	 * @throws IOException on error
 	 */
-	public SocketHandler(int port) throws IOException {
+	public SocketHandler(Game game, int port) throws IOException {
+		this.game = game;
 		this.port = port;
 		init();
 	}
@@ -43,8 +49,9 @@ public class SocketHandler implements Logable {
 	 * 
 	 * @throws IOException on error
 	 */
-	public SocketHandler() throws IOException {
+	public SocketHandler(Game game) throws IOException {
 		port = 9101;
+		this.game = game;
 		init();
 	}
 
@@ -56,6 +63,7 @@ public class SocketHandler implements Logable {
 		SocketHandler thisInstance = this;
 
 		initInternalConnectListener();
+		initInternalDisconnectListener();
 
 		Thread t = new Thread(new Runnable() {
 			@Override
@@ -88,6 +96,12 @@ public class SocketHandler implements Logable {
 			sendConnectedClientsUpdate();
 		});
 	}
+	
+	private void initInternalDisconnectListener() {
+		registerConnectionDisconnectListener((client) -> {
+			sendConnectedClientsUpdate();
+		});
+	}
 
 	/***
 	 * send an update of the list with connected clients to all clients
@@ -110,7 +124,7 @@ public class SocketHandler implements Logable {
 			if (connection.getClient() != null)
 				try {
 					connection.sendMessage(
-							OutputBuilder.getInstance().build(OutputType.CONNECTED_CLIENT_INFO, players + clients));
+							OutputBuilder.getInstance().buildOutput(OutputType.CONNECTED_CLIENT_INFO, players + clients));
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -150,7 +164,7 @@ public class SocketHandler implements Logable {
 		while (!conHandlers.isEmpty()) {
 			ConnectionHandler connection = conHandlers.get(0);
 			connection.endConnection("Closing a connection", LogType.INFO,
-					OutputBuilder.getInstance().build(OutputType.SERVER_SHUTDOWN, "Server Socket closing"));
+					OutputBuilder.getInstance().buildOutput(OutputType.SERVER_SHUTDOWN, "Server Socket closing"));
 			if (conHandlers.contains(connection)) {
 				conHandlers.remove(connection);
 			}
@@ -220,7 +234,7 @@ public class SocketHandler implements Logable {
 
 	/***
 	 * get a copy of all client paired event listeners
-	 * @return client paired events
+	 * @return client paired listeners
 	 */
 	@SuppressWarnings("unchecked") // Its secure
 	public ArrayList<ClientPairedEvent> getClientPairedListeners() {
@@ -245,5 +259,35 @@ public class SocketHandler implements Logable {
 				}
 			}).start();
 		});
+	}
+
+	/***
+	 * register a listener for disconnects
+	 * @param listener
+	 */
+	public void registerConnectionDisconnectListener(ConnectionDisconnectEvent listener) {
+		connectionDisconnectListeners.add(listener);
+	}
+	
+	/***
+	 * get a copy of all connection disconnect listeners
+	 * @return connection disconnect listeners
+	 */
+	public ArrayList<ConnectionDisconnectEvent> getConnectionDisconnectListeners() {
+		return connectionDisconnectListeners;
+	}
+
+	/***
+	 * ConnectionHandler calls this method when the connection closes
+	 * @param connectionHandler
+	 */
+	protected void fireConnectionDisconnectEvent(ConnectionHandler connectionHandler) {
+		for(ConnectionDisconnectEvent listener : connectionDisconnectListeners) {
+			listener.onConnectionDisconnect(connectionHandler);
+		}
+	}
+
+	public Game getGame() {
+		return game;
 	}
 }
