@@ -19,7 +19,7 @@ import de.emnichtda.lottischmarotti.server.entitys.logger.Logger;
 public class SocketHandler implements Logable {
 
 	private Game game;
-	
+
 	private int port;
 	private ServerSocket socket;
 	private ArrayList<ConnectionHandler> conHandlers;
@@ -27,7 +27,7 @@ public class SocketHandler implements Logable {
 	private ArrayList<ConnectEvent> connectListeners = new ArrayList<>();
 	private ArrayList<ClientPairedEvent> clientPairedListeners = new ArrayList<>();
 	private ArrayList<ConnectionDisconnectEvent> connectionDisconnectListeners = new ArrayList<>();
-	
+
 	private ArrayList<Player> connectedPlayers = new ArrayList<>();
 
 	private boolean run = true;
@@ -62,9 +62,6 @@ public class SocketHandler implements Logable {
 
 		SocketHandler thisInstance = this;
 
-		initInternalConnectListener();
-		initInternalDisconnectListener();
-
 		Thread t = new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -88,28 +85,13 @@ public class SocketHandler implements Logable {
 		Logger.getInstance().logInfo("Socket started", this);
 	}
 
-	private void initInternalConnectListener() {
-		registerClientPairedEventHandler((client) -> {
-			if(client instanceof Player) {
-				connectedPlayers.add((Player) client);
-			}
-			sendConnectedClientsUpdate();
-		});
-	}
-	
-	private void initInternalDisconnectListener() {
-		registerConnectionDisconnectListener((client) -> {
-			sendConnectedClientsUpdate();
-		});
-	}
-
 	/***
 	 * send an update of the list with connected clients to all clients
 	 */
 	public void sendConnectedClientsUpdate() {
 		String players = "Players: ";
 		String clients = "Clients: ";
-		
+
 		for (ConnectionHandler connection : getConnections()) {
 			Client client = connection.getClient();
 			if (client != null) {
@@ -119,17 +101,17 @@ public class SocketHandler implements Logable {
 					clients += "'" + client.getClientName() + "' ";
 			}
 		}
-		
-		for(ConnectionHandler connection : conHandlers) {
+
+		for (ConnectionHandler connection : conHandlers) {
 			if (connection.getClient() != null)
 				try {
-					connection.sendMessage(
-							OutputBuilder.getInstance().buildOutput(OutputType.CONNECTED_CLIENT_INFO, players + clients));
+					connection.sendMessage(OutputBuilder.getInstance().buildOutput(OutputType.CONNECTED_CLIENT_INFO,
+							players + clients));
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 		}
-		
+
 	}
 
 	/***
@@ -226,6 +208,7 @@ public class SocketHandler implements Logable {
 
 	/***
 	 * get the connected players on this socket
+	 * 
 	 * @return players
 	 */
 	public ArrayList<Player> getConnectedPlayers() {
@@ -234,6 +217,7 @@ public class SocketHandler implements Logable {
 
 	/***
 	 * get a copy of all client paired event listeners
+	 * 
 	 * @return client paired listeners
 	 */
 	@SuppressWarnings("unchecked") // Its secure
@@ -251,6 +235,11 @@ public class SocketHandler implements Logable {
 	}
 
 	public void fireClientPairedEvent(Client client) {
+		if (client instanceof Player) {
+			connectedPlayers.add((Player) client);
+		}
+		sendConnectedClientsUpdate();
+
 		clientPairedListeners.forEach((listener) -> {
 			new Thread(new Runnable() {
 				@Override
@@ -263,14 +252,16 @@ public class SocketHandler implements Logable {
 
 	/***
 	 * register a listener for disconnects
+	 * 
 	 * @param listener
 	 */
 	public void registerConnectionDisconnectListener(ConnectionDisconnectEvent listener) {
 		connectionDisconnectListeners.add(listener);
 	}
-	
+
 	/***
 	 * get a copy of all connection disconnect listeners
+	 * 
 	 * @return connection disconnect listeners
 	 */
 	public ArrayList<ConnectionDisconnectEvent> getConnectionDisconnectListeners() {
@@ -279,10 +270,13 @@ public class SocketHandler implements Logable {
 
 	/***
 	 * ConnectionHandler calls this method when the connection closes
+	 * 
 	 * @param connectionHandler
 	 */
 	protected void fireConnectionDisconnectEvent(ConnectionHandler connectionHandler) {
-		for(ConnectionDisconnectEvent listener : connectionDisconnectListeners) {
+		sendConnectedClientsUpdate();
+
+		for (ConnectionDisconnectEvent listener : connectionDisconnectListeners) {
 			listener.onConnectionDisconnect(connectionHandler);
 		}
 	}

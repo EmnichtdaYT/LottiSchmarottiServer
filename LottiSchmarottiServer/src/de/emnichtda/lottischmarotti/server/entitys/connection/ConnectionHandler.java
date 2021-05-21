@@ -387,6 +387,7 @@ public class ConnectionHandler implements Logable {
 	 * @param input input
 	 */
 	public void awaitInput(AwaitedInput input) {
+		if(!run) return;
 		input.setConnection(this);
 		awaitedInputQueue.add(input);
 
