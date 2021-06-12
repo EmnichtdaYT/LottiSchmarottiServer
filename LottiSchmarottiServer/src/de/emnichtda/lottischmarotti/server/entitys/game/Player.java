@@ -7,6 +7,7 @@ import de.emnichtda.lottischmarotti.server.entitys.connection.enums.AwaitedInput
 import de.emnichtda.lottischmarotti.server.entitys.connection.enums.InputType;
 import de.emnichtda.lottischmarotti.server.entitys.connection.parser.Input;
 import de.emnichtda.lottischmarotti.server.entitys.events.connection.InputArrivedEvent;
+import de.emnichtda.lottischmarotti.server.entitys.logger.Logger;
 
 public class Player extends Client{
 
@@ -62,7 +63,7 @@ public class Player extends Client{
 		getConnection().awaitInput(new AwaitedInput(InputType.ROLL_DECISION, "" + rolled, listener));
 	}
 	
-	public void rollDone() { //Do figure selection etc
+	public void rollDone() { //Do character selection etc
 		getConnection().getSocket().getGame().finishedTurn(this);
 	}
 
@@ -81,9 +82,12 @@ public class Player extends Client{
 		
 		@Override
 		public void onArrive(Input response, AwaitedInputStatus status) { //TODO: Check if roll done etc etc etc
+			if(!status.equals(AwaitedInputStatus.ARRIVED)){
+				return;
+			}
 			if(!isFull()) {
 				roll(this);
-			}else {
+			}else{
 				rollDone();
 			}
 		}
