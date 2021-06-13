@@ -7,7 +7,6 @@ import de.emnichtda.lottischmarotti.server.entitys.connection.enums.AwaitedInput
 import de.emnichtda.lottischmarotti.server.entitys.connection.enums.InputType;
 import de.emnichtda.lottischmarotti.server.entitys.connection.parser.Input;
 import de.emnichtda.lottischmarotti.server.entitys.events.connection.InputArrivedEvent;
-import de.emnichtda.lottischmarotti.server.entitys.logger.Logger;
 
 public class Player extends Client{
 
