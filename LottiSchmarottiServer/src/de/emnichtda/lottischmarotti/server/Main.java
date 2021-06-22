@@ -10,7 +10,7 @@ public class Main {
 	private static Main instance;
 
 	public Main() {
-
+		
 		if (instance == null)
 			instance = this;
 		else {
@@ -33,4 +33,5 @@ public class Main {
 	public static Main getInstance() {
 		return instance;
 	}
+
 }

@@ -133,16 +133,38 @@ public class ConnectionHandler implements Logable {
 				}
 				return;
 			}
+
+			
 			if (response.getParsedArguments()[0].equalsIgnoreCase("PLAYER")) {
 				if (Main.getInstance().getGame().isStarted()) {
 					endConnection("Player tried to connect but game is already running.", LogType.INFO, OutputBuilder
 							.getInstance().buildOutput(OutputType.GENERAL_ERROR, "The game is already running."));
 					return;
 				}
+				
+				
+				if (response.getParsedArguments()[1].contains("'") || response.getParsedArguments()[1].contains("\"")
+						|| response.getParsedArguments()[1].toLowerCase().contains("\\")
+						|| response.getParsedArguments()[1].toLowerCase().contains("fuck")
+						|| response.getParsedArguments()[1].toLowerCase().contains("hitler")
+						|| response.getParsedArguments()[1].toLowerCase().contains("jude")
+						|| response.getParsedArguments()[1].toLowerCase().contains("pussy")
+						|| response.getParsedArguments()[1].toLowerCase().contains("nigg")) {
+					endConnection("Bad username.", LogType.INFO, OutputBuilder.getInstance()
+							.buildOutput(OutputType.GENERAL_ERROR, "Please change your username."));
+					return;
+				}
+				
 				if (socket.getConnectedPlayers().size() >= Game.MAX_PLAYERS) {
 					endConnection("Player tried to connect but game is already full.", LogType.INFO,
 							OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR, "The game is full."));
 					return;
+				}
+				for(Player p : socket.getConnectedPlayers()) {
+					if(p.getClientName().equalsIgnoreCase(response.getParsedArguments()[1])) {
+						endConnection("Username already taken", LogType.INFO, OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR, "Your username is already taken in this game."));
+						return;
+					}
 				}
 				client = new Player(this, response.getParsedArguments()[1]);
 			} else {
@@ -212,16 +234,17 @@ public class ConnectionHandler implements Logable {
 			handleResponse(response);
 			return;
 		}
-		
+
 		if (input != null) {
-			if(input.getInputType().equals(InputType.CLIENT_TIMEOUT)) {
+			if (input.getInputType().equals(InputType.CLIENT_TIMEOUT)) {
 				currentAwaitedInput.resetTimeWhenDisconnect();
 				try {
 					sendMessage(OutputBuilder.getInstance().buildOutput(OutputType.ACKNOWLEDGMENT, "Reset await time"));
 				} catch (IOException e) {
-					Logger.getInstance().logWarning("Unable to inform client about acknowledgment awaited input timout reset", this);
+					Logger.getInstance().logWarning(
+							"Unable to inform client about acknowledgment awaited input timout reset", this);
 				}
-			}else {
+			} else {
 				awaitedInputQueue.remove(0);
 				currentAwaitedInput.arrived(input, AwaitedInputStatus.ARRIVED);
 			}
@@ -351,7 +374,8 @@ public class ConnectionHandler implements Logable {
 	protected void sendFirstAwaitInputQueueMessage() throws IOException {
 		if (!awaitedInputQueue.isEmpty()) {
 			AwaitedInput currentAwaitedInput = awaitedInputQueue.get(0);
-			sendMessage(OutputBuilder.getInstance().buildAwaitedInput(currentAwaitedInput.getType(), currentAwaitedInput.getMessage()));
+			sendMessage(OutputBuilder.getInstance().buildAwaitedInput(currentAwaitedInput.getType(),
+					currentAwaitedInput.getMessage()));
 		}
 	}
 
@@ -387,7 +411,8 @@ public class ConnectionHandler implements Logable {
 	 * @param input input
 	 */
 	public void awaitInput(AwaitedInput input) {
-		if(!run) return;
+		if (!run)
+			return;
 		input.setConnection(this);
 		awaitedInputQueue.add(input);
 

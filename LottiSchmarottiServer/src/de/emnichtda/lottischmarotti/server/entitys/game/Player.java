@@ -5,8 +5,13 @@ import de.emnichtda.lottischmarotti.server.entitys.connection.AwaitedInput;
 import de.emnichtda.lottischmarotti.server.entitys.connection.ConnectionHandler;
 import de.emnichtda.lottischmarotti.server.entitys.connection.enums.AwaitedInputStatus;
 import de.emnichtda.lottischmarotti.server.entitys.connection.enums.InputType;
+import de.emnichtda.lottischmarotti.server.entitys.connection.enums.OutputType;
 import de.emnichtda.lottischmarotti.server.entitys.connection.parser.Input;
+import de.emnichtda.lottischmarotti.server.entitys.connection.parser.OutputBuilder;
 import de.emnichtda.lottischmarotti.server.entitys.events.connection.InputArrivedEvent;
+import de.emnichtda.lottischmarotti.server.entitys.logger.LogType;
+import de.emnichtda.lottischmarotti.server.entitys.logger.Logable;
+import de.emnichtda.lottischmarotti.server.entitys.logger.Logger;
 
 public class Player extends Client{
 
@@ -50,7 +55,7 @@ public class Player extends Client{
 	 * Tell the player its their turn
 	 */
 	public void turn() {
-		DiceDecisionListener listener = new DiceDecisionListener();
+		DiceDecisionListener listener = new DiceDecisionListener(this);
 		
 		roll(listener);
 	}
@@ -59,15 +64,22 @@ public class Player extends Client{
 		int rolled = Dice.getInstance().roll();
 		listener.addRolledNumber(rolled);
 		
-		getConnection().awaitInput(new AwaitedInput(InputType.ROLL_DECISION, "" + rolled, listener));
+		getConnection().awaitInput(new AwaitedInput(InputType.ROLL_DECISION, rolled + " continue? type 'c'", listener));
 	}
 	
-	public void rollDone() { //Do character selection etc
-		getConnection().getSocket().getGame().finishedTurn(this);
+	public void rollDone() {
+		CharacterSelectionListener listener = new CharacterSelectionListener(this);
+		getConnection().awaitInput(new AwaitedInput(InputType.ROLL_DECISION, "which character you want to select, type number", listener));
 	}
 
-	private class DiceDecisionListener implements InputArrivedEvent {
+	private class DiceDecisionListener implements InputArrivedEvent, Logable {
 		public int[] lastRolled = new int[3];
+		
+		private Player player;
+		
+		public DiceDecisionListener(Player player) {
+			this.player = player;
+		}
 		
 		public void addRolledNumber(int rolled) {
 			for(int i = 0; i < lastRolled.length; i++) {
@@ -80,11 +92,16 @@ public class Player extends Client{
 		}
 		
 		@Override
-		public void onArrive(Input response, AwaitedInputStatus status) { //TODO: Check if roll done etc etc etc
-			if(!status.equals(AwaitedInputStatus.ARRIVED)){
+		public void onArrive(Input response, AwaitedInputStatus status) {
+			if(!status.equals(AwaitedInputStatus.ARRIVED)) {
+				getConnection().endConnection("Player answered with maliformed DiceDecision", LogType.ERROR, OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR, "Maliformed DiceDecision. Closing Connection"));
 				return;
 			}
-			if(!isFull()) {
+			if(response.getParsedArguments().length!=1) {
+				Logger.getInstance().logWarning("got invalid argument length for roll decision", this);
+				return;
+			}
+			if(!isFull() && response.getParsedArguments().length == 1 && response.getParsedArguments()[0].equals("c")) {
 				roll(this);
 			}else{
 				rollDone();
@@ -94,6 +111,35 @@ public class Player extends Client{
 		public boolean isFull() {
 			return lastRolled[lastRolled.length-1] != 0;
 		}
+
+		@Override
+		public String getLogPrefix() {
+			return "[Dice Decision listerner]" + this.getPlayer().getLogPrefix();
+		}
+
+		public Player getPlayer() {
+			return player;
+		}
+	}
+	
+	private class CharacterSelectionListener implements InputArrivedEvent, Logable {
+
+		private Player player;
+		
+		public CharacterSelectionListener(Player player) {
+			this.player = player;
+		}
+
+		@Override
+		public String getLogPrefix() {
+			return "[Character Decision Listener]" + player.getLogPrefix();
+		}
+
+		@Override
+		public void onArrive(Input response, AwaitedInputStatus status) {
+			getConnection().getSocket().getGame().finishedTurn(player);
+		}
+		
 	}
 	
 }
