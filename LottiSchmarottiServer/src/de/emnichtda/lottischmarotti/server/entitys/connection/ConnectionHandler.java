@@ -145,6 +145,7 @@ public class ConnectionHandler implements Logable {
 				
 				if (response.getParsedArguments()[1].contains("'") || response.getParsedArguments()[1].contains("\"")
 						|| response.getParsedArguments()[1].toLowerCase().contains("\\")
+						|| response.getParsedArguments()[1].toLowerCase().contains(" ")
 						|| response.getParsedArguments()[1].toLowerCase().contains("fuck")
 						|| response.getParsedArguments()[1].toLowerCase().contains("hitler")
 						|| response.getParsedArguments()[1].toLowerCase().contains("jude")

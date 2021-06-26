@@ -17,7 +17,6 @@ public class Main {
 			Logger.getInstance().logError("A game instance is already running. Exiting...");
 			return;
 		}
-		
 		game = new Game();
 
 	}
