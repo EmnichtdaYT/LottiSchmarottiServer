@@ -2,7 +2,12 @@ package de.emnichtda.lottischmarotti.server.entitys.game;
 
 public class GameCharacter {
 	private Field field;
+	private Game game;
 	private Player owner;
+	
+	public GameCharacter(Game game) {
+		this.game = game;
+	}
 	
 	/***
 	 * gets the field the character is currently standing on
@@ -38,6 +43,20 @@ public class GameCharacter {
 	protected void setOwner(Player owner) throws IllegalStateException{
 		if(!owner.isOwningCharacter(this)) throw new IllegalStateException("The new owner doesn't own the character.");
 		this.owner = owner;
+	}
+
+	public void doStep(int rolled) {
+		
+		int currentField = 0;
+		
+		for(int i = 0; i < game.getBoard().getBoard().length; i++) {
+			if(game.getBoard().getBoard()[i].equals(field)) {
+				currentField = i;
+				break;
+			}
+		}
+		
+		game.getBoard().getBoard()[currentField].setStanding(this);
 	}
 	
 	

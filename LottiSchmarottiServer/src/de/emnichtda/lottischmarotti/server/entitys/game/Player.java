@@ -1,5 +1,6 @@
 package de.emnichtda.lottischmarotti.server.entitys.game;
 
+import de.emnichtda.lottischmarotti.server.Main;
 import de.emnichtda.lottischmarotti.server.entitys.Client;
 import de.emnichtda.lottischmarotti.server.entitys.connection.AwaitedInput;
 import de.emnichtda.lottischmarotti.server.entitys.connection.ConnectionHandler;
@@ -29,7 +30,7 @@ public class Player extends Client{
 	 */
 	private void initCharacters() {
 		for(int i = 0; i < owningCharacters.length; i++) {
-			owningCharacters[i] = new GameCharacter();
+			owningCharacters[i] = new GameCharacter(Main.getInstance().getGame());
 			owningCharacters[i].setOwner(this);
 		}
 	}
@@ -44,6 +45,10 @@ public class Player extends Client{
 			if(character == gameCharacter) return true;
 		}
 		return false;
+	}
+	
+	public GameCharacter[] getOwningCharacters() {
+		return owningCharacters;
 	}
 	
 	@Override
@@ -67,9 +72,9 @@ public class Player extends Client{
 		getConnection().awaitInput(new AwaitedInput(InputType.ROLL_DECISION, rolled + " continue? type 'c'", listener));
 	}
 	
-	public void rollDone() {
-		CharacterSelectionListener listener = new CharacterSelectionListener(this);
-		getConnection().awaitInput(new AwaitedInput(InputType.ROLL_DECISION, "which character you want to select, type number", listener));
+	public void rollDone(int rolled) {
+		CharacterSelectionListener listener = new CharacterSelectionListener(this, rolled);
+		getConnection().awaitInput(new AwaitedInput(InputType.ROLL_DECISION, "which character you want to select, type number. You rolled '" + rolled + "'", listener));
 	}
 
 	private class DiceDecisionListener implements InputArrivedEvent, Logable {
@@ -104,7 +109,13 @@ public class Player extends Client{
 			if(!isFull() && response.getParsedArguments().length == 1 && response.getParsedArguments()[0].equals("c")) {
 				roll(this);
 			}else{
-				rollDone();
+				int rolled = 0;
+				
+				for(int i = 0; i < lastRolled.length; i++) {
+					rolled += lastRolled[i];
+				}
+				
+				rollDone(rolled);
 			}
 		}
 		
@@ -125,9 +136,11 @@ public class Player extends Client{
 	private class CharacterSelectionListener implements InputArrivedEvent, Logable {
 
 		private Player player;
+		private int rolled;
 		
-		public CharacterSelectionListener(Player player) {
+		public CharacterSelectionListener(Player player, int rolled) {
 			this.player = player;
+			this.rolled = rolled;
 		}
 
 		@Override
@@ -137,7 +150,31 @@ public class Player extends Client{
 
 		@Override
 		public void onArrive(Input response, AwaitedInputStatus status) {
-			getConnection().getSocket().getGame().finishedTurn(player);
+			if(status!=AwaitedInputStatus.ARRIVED) {
+				getConnection().endConnection("Player answered with maliformed DiceDecision", LogType.ERROR, OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR, "Maliformed CharacterSelection. Closing connection"));
+				return;
+			}
+			
+			if(response.getParsedArguments().length != 1) {
+				getConnection().endConnection("Player answered with maliformed DiceDecision. Invalid amout of parameters", LogType.ERROR, OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR, "Maliformed CharacterSelection. Requires one parameter. Closing connection"));
+				return;
+			}
+			
+			int parsedChar;
+			
+			try {
+				parsedChar = Integer.parseInt(response.getParsedArguments()[0]);
+			} catch(NumberFormatException e) {
+				getConnection().endConnection("Player answered with non integer character number", LogType.ERROR, OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR, "Non integer character number. Closing connection"));
+				return;
+			}
+			
+			if(parsedChar > Player.CHARACTERS_OWNED || parsedChar < 0) {
+				getConnection().endConnection("Player answered with invalid character number", LogType.ERROR, OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR, "Invalid character number. Closing connection"));
+				return;
+			}
+			
+			getConnection().getSocket().getGame().finishedTurn(player, parsedChar, rolled);
 		}
 		
 	}

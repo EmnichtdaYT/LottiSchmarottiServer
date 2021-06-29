@@ -80,11 +80,14 @@ public class Game {
 		currentTurn.turn();
 	}
 	
-	public void finishedTurn(Player player) {
+	public void finishedTurn(Player player, int charNumber, int rolled) {
 		if(currentTurn != player) {
 			Logger.getInstance().logWarning("Player instance reported finished turn but its not their turn", player);
 			return;
 		}
+		
+		player.getOwningCharacters()[charNumber].doStep(rolled);
+		
 		nextPlayersTurn();
 	}
 	
