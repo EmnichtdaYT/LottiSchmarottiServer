@@ -53,4 +53,9 @@ public class Field {
 		return board;
 	}
 	
+	@Override
+	public String toString() {
+		return (standing == null ? "null, null" : standing.getId() + ", " + (standing.getOwner().getId() + 1));
+	}
+	
 }

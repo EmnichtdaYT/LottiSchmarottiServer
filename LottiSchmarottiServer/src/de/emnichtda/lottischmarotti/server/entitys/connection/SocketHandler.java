@@ -236,6 +236,7 @@ public class SocketHandler implements Logable {
 
 	public void fireClientPairedEvent(Client client) {
 		if (client instanceof Player) {
+			((Player) client).setId(connectedPlayers.size());
 			connectedPlayers.add((Player) client);
 		}
 		sendConnectedClientsUpdate();

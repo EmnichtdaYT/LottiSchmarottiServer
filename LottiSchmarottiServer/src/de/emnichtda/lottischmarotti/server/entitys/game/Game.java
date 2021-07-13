@@ -150,4 +150,15 @@ public class Game {
 	public int getCurrentTurnsIndex() {
 		return currentTurnsIndex;
 	}
+
+	public void updateCharPositions() {
+		String message = "";
+		Field[] fields = board.getBoard();
+		for(int i = 1; i<board.getBoard().length; i++) {
+			message += i-1 + ": " + fields[i].toString() + "; ";
+		}
+		for(Player player : getSocket().getConnectedPlayers()) {
+			player.sendUpdateCharPositions(message);
+		}
+	}
 }

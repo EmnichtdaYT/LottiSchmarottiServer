@@ -5,8 +5,11 @@ public class GameCharacter {
 	private Game game;
 	private Player owner;
 	
-	public GameCharacter(Game game) {
+	private int id;
+	
+	public GameCharacter(Game game, int id) {
 		this.game = game;
+		this.id = id;
 	}
 	
 	/***
@@ -25,6 +28,7 @@ public class GameCharacter {
 	protected void setField(Field field) throws IllegalStateException{
 		if(field!=null && field.getStanding() != this) throw new IllegalStateException("The new field is not the field the character is standing on! You can't use the method GameCharacter.setFiled() to change a characters position!");
 		this.field = field;
+		game.updateCharPositions();
 	}
 
 	/***
@@ -56,7 +60,11 @@ public class GameCharacter {
 			}
 		}
 		
-		game.getBoard().getBoard()[currentField].setStanding(this);
+		game.getBoard().getBoard()[currentField+rolled].setStanding(this);
+	}
+
+	public int getId() {
+		return id;
 	}
 	
 	

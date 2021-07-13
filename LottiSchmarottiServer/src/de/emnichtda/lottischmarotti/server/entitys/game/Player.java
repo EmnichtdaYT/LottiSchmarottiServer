@@ -1,5 +1,7 @@
 package de.emnichtda.lottischmarotti.server.entitys.game;
 
+import java.io.IOException;
+
 import de.emnichtda.lottischmarotti.server.Main;
 import de.emnichtda.lottischmarotti.server.entitys.Client;
 import de.emnichtda.lottischmarotti.server.entitys.connection.AwaitedInput;
@@ -18,11 +20,14 @@ public class Player extends Client{
 
 	public static final int CHARACTERS_OWNED = 3;
 	
+	private int id;
+	
 	private GameCharacter[] owningCharacters = new GameCharacter[CHARACTERS_OWNED];
 	
 	public Player(ConnectionHandler connection, String clientName) {
 		super(connection, clientName);
 		initCharacters();
+		
 	}
 
 	/***
@@ -30,7 +35,7 @@ public class Player extends Client{
 	 */
 	private void initCharacters() {
 		for(int i = 0; i < owningCharacters.length; i++) {
-			owningCharacters[i] = new GameCharacter(Main.getInstance().getGame());
+			owningCharacters[i] = new GameCharacter(Main.getInstance().getGame(), i);
 			owningCharacters[i].setOwner(this);
 		}
 	}
@@ -177,6 +182,22 @@ public class Player extends Client{
 			getConnection().getSocket().getGame().finishedTurn(player, parsedChar, rolled);
 		}
 		
+	}
+
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;		
+	}
+
+	public void sendUpdateCharPositions(String message) {
+		try {
+			getConnection().sendMessage(OutputBuilder.getInstance().buildOutput(OutputType.CHARACTER_INFO, message));
+		} catch (IOException e) {
+			Logger.getInstance().logWarning("Problem while sending character info to player", this);
+		}
 	}
 	
 }
