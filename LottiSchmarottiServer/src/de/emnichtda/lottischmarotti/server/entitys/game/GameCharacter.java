@@ -48,9 +48,8 @@ public class GameCharacter {
 		if(!owner.isOwningCharacter(this)) throw new IllegalStateException("The new owner doesn't own the character.");
 		this.owner = owner;
 	}
-
-	public void doStep(int rolled) {
-		
+	
+	public int getCurrentField() {
 		int currentField = 0;
 		
 		for(int i = 0; i < game.getBoard().getBoard().length; i++) {
@@ -60,11 +59,21 @@ public class GameCharacter {
 			}
 		}
 		
+		return currentField;
+	}
+
+	public void doStep(int rolled) {
+		int currentField = getCurrentField();
+		
 		game.getBoard().getBoard()[currentField+rolled].setStanding(this);
 	}
 
 	public int getId() {
 		return id;
+	}
+
+	public boolean canDoStep(int rolled) {
+		return !game.getBoard().getBoard()[getCurrentField()+rolled].isPopulated();
 	}
 	
 	

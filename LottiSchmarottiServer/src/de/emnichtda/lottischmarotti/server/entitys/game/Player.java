@@ -199,5 +199,10 @@ public class Player extends Client{
 			Logger.getInstance().logWarning("Problem while sending character info to player", this);
 		}
 	}
+
+	public void requestAnotherCharacterDecision(int rolled) {
+		CharacterSelectionListener listener = new CharacterSelectionListener(this, rolled);
+		getConnection().awaitInput(new AwaitedInput(InputType.ROLL_DECISION, "this character cant move there. select different one, type number. You rolled '" + rolled + "'", listener));
+	}
 	
 }

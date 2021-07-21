@@ -86,7 +86,11 @@ public class Game {
 			return;
 		}
 		
-		player.getOwningCharacters()[charNumber].doStep(rolled);
+		if(player.getOwningCharacters()[charNumber].canDoStep(rolled))		
+			player.getOwningCharacters()[charNumber].doStep(rolled);
+		else {
+			player.requestAnotherCharacterDecision(rolled);
+		}
 		
 		nextPlayersTurn();
 	}
