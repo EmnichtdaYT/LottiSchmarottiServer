@@ -5,7 +5,7 @@ public class BoardHandler {
 	/***
 	 * Defines the amount of fileds. Last field is the win field
 	 */
-	public static final int FIELDS = 27;
+	public static final int FIELDS = 28;
 	
 	private Field[] board = new Field[FIELDS];
 	

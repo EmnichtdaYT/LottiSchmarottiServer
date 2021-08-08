@@ -42,7 +42,6 @@ public class Field {
 	public void unsetStanding() throws IllegalStateException{
 		if(!isPopulated()) throw new IllegalStateException("The field is not populated.");
 		this.standing = null;
-		standing.setField(null);
 	}
 
 	/***

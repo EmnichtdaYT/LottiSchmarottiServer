@@ -78,7 +78,7 @@ public class Game {
 		currentTurnsIndex = 0;
 		
 		currentTurn.turn();
-	}
+	} 
 	
 	public void finishedTurn(Player player, int charNumber, int rolled) {
 		if(currentTurn != player) {
@@ -86,16 +86,18 @@ public class Game {
 			return;
 		}
 		
-		if(player.getOwningCharacters()[charNumber].canDoStep(rolled))		
+		if(player.getOwningCharacters()[charNumber].canDoStep(rolled)) {		
 			player.getOwningCharacters()[charNumber].doStep(rolled);
-		else {
+			nextPlayersTurn();
+		} else {
 			player.requestAnotherCharacterDecision(rolled);
 		}
-		
-		nextPlayersTurn();
 	}
 	
-	private void nextPlayersTurn() {
+	public void nextPlayersTurn() {
+		try {
+			Thread.sleep(200); //200 ms time for the clients to change char positions (
+		} catch (InterruptedException e) {	}
 		currentTurnsIndex++;
 		if(currentTurnsIndex>=socket.getConnectedPlayers().size()) {
 			currentTurnsIndex = 0;

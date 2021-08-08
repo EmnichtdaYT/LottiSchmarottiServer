@@ -16,25 +16,25 @@ import de.emnichtda.lottischmarotti.server.entitys.logger.LogType;
 import de.emnichtda.lottischmarotti.server.entitys.logger.Logable;
 import de.emnichtda.lottischmarotti.server.entitys.logger.Logger;
 
-public class Player extends Client{
+public class Player extends Client {
 
 	public static final int CHARACTERS_OWNED = 3;
-	
+
 	private int id;
-	
+
 	private GameCharacter[] owningCharacters = new GameCharacter[CHARACTERS_OWNED];
-	
+
 	public Player(ConnectionHandler connection, String clientName) {
 		super(connection, clientName);
 		initCharacters();
-		
+
 	}
 
 	/***
 	 * create characters
 	 */
 	private void initCharacters() {
-		for(int i = 0; i < owningCharacters.length; i++) {
+		for (int i = 0; i < owningCharacters.length; i++) {
 			owningCharacters[i] = new GameCharacter(Main.getInstance().getGame(), i);
 			owningCharacters[i].setOwner(this);
 		}
@@ -42,20 +42,22 @@ public class Player extends Client{
 
 	/***
 	 * get if player owns a character
+	 * 
 	 * @param gameCharacter character to check ownership of
 	 * @return boolean if owns
 	 */
 	public boolean isOwningCharacter(GameCharacter gameCharacter) {
-		for(GameCharacter character : owningCharacters) {
-			if(character == gameCharacter) return true;
+		for (GameCharacter character : owningCharacters) {
+			if (character == gameCharacter)
+				return true;
 		}
 		return false;
 	}
-	
+
 	public GameCharacter[] getOwningCharacters() {
 		return owningCharacters;
 	}
-	
+
 	@Override
 	public String getLogPrefix() {
 		return "[Player Client: " + getClientName() + "]" + getConnection().getLogPrefix();
@@ -66,66 +68,88 @@ public class Player extends Client{
 	 */
 	public void turn() {
 		DiceDecisionListener listener = new DiceDecisionListener(this);
-		
+
 		roll(listener);
 	}
-	
+
 	public void roll(DiceDecisionListener listener) {
 		int rolled = Dice.getInstance().roll();
 		listener.addRolledNumber(rolled);
-		
+
 		getConnection().awaitInput(new AwaitedInput(InputType.ROLL_DECISION, rolled + " continue? type 'c'", listener));
 	}
-	
+
+	public boolean canMoveAnyChar(int rolled) {
+		for (GameCharacter character : owningCharacters) {
+			if (character.canDoStep(rolled)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public void rollDone(int rolled) {
+		if (!canMoveAnyChar(rolled)) {
+			try {
+				getConnection().sendMessage(OutputBuilder.getInstance().buildOutput(OutputType.ROLL_QUESTION,
+						"Unable to do step with all your characters, skipping"));
+			} catch (IOException e) {
+			}
+			getConnection().getSocket().getGame().nextPlayersTurn();
+			return;
+		}
 		CharacterSelectionListener listener = new CharacterSelectionListener(this, rolled);
-		getConnection().awaitInput(new AwaitedInput(InputType.ROLL_DECISION, "which character you want to select, type number. You rolled '" + rolled + "'", listener));
+		getConnection().awaitInput(new AwaitedInput(InputType.ROLL_DECISION,
+				"which character you want to select, type number. You rolled '" + rolled + "'", listener));
 	}
 
 	private class DiceDecisionListener implements InputArrivedEvent, Logable {
 		public int[] lastRolled = new int[3];
-		
+
 		private Player player;
-		
+
 		public DiceDecisionListener(Player player) {
 			this.player = player;
 		}
-		
+
 		public void addRolledNumber(int rolled) {
-			for(int i = 0; i < lastRolled.length; i++) {
-				if(lastRolled[i] == 0) {
+			for (int i = 0; i < lastRolled.length; i++) {
+				if (lastRolled[i] == 0) {
 					lastRolled[i] = rolled;
 					return;
 				}
 			}
 			throw new IndexOutOfBoundsException("There are already 3 dice rolls saved.");
 		}
-		
+
 		@Override
 		public void onArrive(Input response, AwaitedInputStatus status) {
-			if(!status.equals(AwaitedInputStatus.ARRIVED)) {
-				getConnection().endConnection("Player answered with maliformed DiceDecision", LogType.ERROR, OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR, "Maliformed DiceDecision. Closing Connection"));
+			if (!status.equals(AwaitedInputStatus.ARRIVED)) {
+				getConnection().endConnection("Player answered with maliformed DiceDecision", LogType.ERROR,
+						OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR,
+								"Maliformed DiceDecision. Closing Connection"));
 				return;
 			}
-			if(response.getParsedArguments().length!=1) {
+			if (response.getParsedArguments().length != 1) {
 				Logger.getInstance().logWarning("got invalid argument length for roll decision", this);
 				return;
 			}
-			if(!isFull() && response.getParsedArguments().length == 1 && response.getParsedArguments()[0].equals("c")) {
+			if (!isFull() && response.getParsedArguments().length == 1
+					&& response.getParsedArguments()[0].equals("c")) {
 				roll(this);
-			}else{
+			} else {
 				int rolled = 0;
-				
-				for(int i = 0; i < lastRolled.length; i++) {
+
+				for (int i = 0; i < lastRolled.length; i++) {
 					rolled += lastRolled[i];
 				}
-				
+
 				rollDone(rolled);
 			}
 		}
-		
+
 		public boolean isFull() {
-			return lastRolled[lastRolled.length-1] != 0;
+			return lastRolled[lastRolled.length - 1] != 0;
 		}
 
 		@Override
@@ -137,12 +161,12 @@ public class Player extends Client{
 			return player;
 		}
 	}
-	
+
 	private class CharacterSelectionListener implements InputArrivedEvent, Logable {
 
 		private Player player;
 		private int rolled;
-		
+
 		public CharacterSelectionListener(Player player, int rolled) {
 			this.player = player;
 			this.rolled = rolled;
@@ -155,33 +179,42 @@ public class Player extends Client{
 
 		@Override
 		public void onArrive(Input response, AwaitedInputStatus status) {
-			if(status!=AwaitedInputStatus.ARRIVED) {
-				getConnection().endConnection("Player answered with maliformed DiceDecision", LogType.ERROR, OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR, "Maliformed CharacterSelection. Closing connection"));
+			if (status != AwaitedInputStatus.ARRIVED) {
+				getConnection().endConnection("Player answered with maliformed DiceDecision", LogType.ERROR,
+						OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR,
+								"Maliformed CharacterSelection. Closing connection"));
 				return;
 			}
-			
-			if(response.getParsedArguments().length != 1) {
-				getConnection().endConnection("Player answered with maliformed DiceDecision. Invalid amout of parameters", LogType.ERROR, OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR, "Maliformed CharacterSelection. Requires one parameter. Closing connection"));
+
+			if (response.getParsedArguments().length != 1) {
+				getConnection().endConnection(
+						"Player answered with maliformed DiceDecision. Invalid amout of parameters", LogType.ERROR,
+						OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR,
+								"Maliformed CharacterSelection. Requires one parameter. Closing connection"));
 				return;
 			}
-			
+
 			int parsedChar;
-			
+
 			try {
 				parsedChar = Integer.parseInt(response.getParsedArguments()[0]);
-			} catch(NumberFormatException e) {
-				getConnection().endConnection("Player answered with non integer character number", LogType.ERROR, OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR, "Non integer character number. Closing connection"));
+			} catch (NumberFormatException e) {
+				getConnection().endConnection("Player answered with non integer character number", LogType.ERROR,
+						OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR,
+								"Non integer character number. Closing connection"));
 				return;
 			}
-			
-			if(parsedChar > Player.CHARACTERS_OWNED || parsedChar < 0) {
-				getConnection().endConnection("Player answered with invalid character number", LogType.ERROR, OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR, "Invalid character number. Closing connection"));
+
+			if (parsedChar > Player.CHARACTERS_OWNED || parsedChar < 0) {
+				getConnection().endConnection("Player answered with invalid character number", LogType.ERROR,
+						OutputBuilder.getInstance().buildOutput(OutputType.GENERAL_ERROR,
+								"Invalid character number. Closing connection"));
 				return;
 			}
-			
+
 			getConnection().getSocket().getGame().finishedTurn(player, parsedChar, rolled);
 		}
-		
+
 	}
 
 	public int getId() {
@@ -189,7 +222,7 @@ public class Player extends Client{
 	}
 
 	public void setId(int id) {
-		this.id = id;		
+		this.id = id;
 	}
 
 	public void sendUpdateCharPositions(String message) {
@@ -202,7 +235,9 @@ public class Player extends Client{
 
 	public void requestAnotherCharacterDecision(int rolled) {
 		CharacterSelectionListener listener = new CharacterSelectionListener(this, rolled);
-		getConnection().awaitInput(new AwaitedInput(InputType.ROLL_DECISION, "this character cant move there. select different one, type number. You rolled '" + rolled + "'", listener));
+		getConnection().awaitInput(new AwaitedInput(InputType.ROLL_DECISION,
+				"this character cant move there. select different one, type number. You rolled '" + rolled + "'",
+				listener));
 	}
-	
+
 }
