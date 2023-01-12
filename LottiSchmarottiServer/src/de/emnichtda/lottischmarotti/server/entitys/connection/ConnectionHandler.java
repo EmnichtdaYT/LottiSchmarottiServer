@@ -270,17 +270,8 @@ public class ConnectionHandler implements Logable {
 	 * Their head is exploding because the complexity of this project is way <br>
 	 * more than their small brain can handle. Zoe hates their former self because
 	 * <br>
-	 * of this stupid decision to code a multi-player game. <br>
-	 * Zoe would rather like to lay in bed all day long and bruise their...<br>
-	 * ...<br>
-	 * their... <br>
-	 * ...<br>
-	 * t<br>
-	 * h<br>
-	 * e<br>
-	 * i<br>
-	 * r<br>
-	 * ... ....<br>
+	 * of this stupid decision to code a multi-player game. <br>	 
+	 * <br>
 	 * This might be too much personal stuff for an api documentation so ill end the
 	 * story here. <br>
 	 * And they all lived happily ever after. <br>
